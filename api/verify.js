@@ -1,8 +1,9 @@
-// Verifies a Paystack transaction server-side using the SECRET key.
-// The secret key is read from the PAYSTACK_SECRET_KEY Vercel env var and is
-// never exposed to the browser. If the secret key is not set, the endpoint
-// responds with reason "verification_unavailable" and the ticket page falls
-// back to the record saved on the buyer's device.
+// Verifies a Paystack transaction server-side using the SECRET key that matches
+// the current mode (test/live). The secret key is read only here, never exposed
+// to the browser. Falls back to "verification_unavailable" when no secret key is
+// configured for the active mode (e.g. test mode without a test secret key).
+var S = require("./_settings");
+
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   try {
@@ -11,13 +12,15 @@ module.exports = async function handler(req, res) {
       url.searchParams.get("reference") ||
       url.searchParams.get("trxref") ||
       url.searchParams.get("ref");
-    var secret = process.env.PAYSTACK_SECRET_KEY || "";
+
+    var s = await S.readSettings();
+    var secret = S.secretKey(s.mode);
 
     if (!reference) {
       return res.status(400).json({ ok: false, reason: "missing_reference" });
     }
     if (!secret) {
-      return res.status(200).json({ ok: false, reason: "verification_unavailable" });
+      return res.status(200).json({ ok: false, reason: "verification_unavailable", mode: s.mode });
     }
 
     var r = await fetch(
@@ -27,9 +30,7 @@ module.exports = async function handler(req, res) {
     var j = await r.json();
 
     if (!j || !j.status || !j.data) {
-      return res
-        .status(200)
-        .json({ ok: false, reason: "not_verified", message: (j && j.message) || "" });
+      return res.status(200).json({ ok: false, reason: "not_verified", message: (j && j.message) || "" });
     }
 
     var d = j.data;

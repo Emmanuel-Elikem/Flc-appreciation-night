@@ -28,6 +28,32 @@
         <p class="eyebrow">Admin</p>
         <h2>The guest <em>list</em></h2>
       </div>
+
+      <div class="settings-card">
+        <div class="settings-head">
+          <p class="eyebrow">Payment settings</p>
+          <span class="mode-pill" id="modePill" data-mode="test">Test mode</span>
+        </div>
+        <div class="settings-grid">
+          <div class="field">
+            <label for="priceInput">Ticket price (GHS)</label>
+            <input id="priceInput" type="number" min="1" step="1" inputmode="numeric" placeholder="150">
+          </div>
+          <div class="field">
+            <label>Payment mode</label>
+            <div class="mode-toggle" role="group" aria-label="Payment mode">
+              <button type="button" class="mode-btn" data-mode="test">Test</button>
+              <button type="button" class="mode-btn" data-mode="live">Live</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-actions">
+          <button class="btn btn--gold" id="saveSettingsBtn" type="button">Save settings</button>
+          <span class="settings-status" id="settingsStatus"></span>
+        </div>
+        <p class="settings-note">Changes apply to <strong>everyone</strong> immediately. In <strong>Live</strong> mode real cards are charged &mdash; use Test while trying things out.</p>
+      </div>
+
       <div class="admin-stats">
         <div class="stat"><span>Tickets issued</span><strong id="statCount">0</strong></div>
         <div class="stat"><span>Value</span><strong id="statRevenue">GHS 0</strong></div>
@@ -43,7 +69,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Guest</th><th>Email</th><th>Ticket</th><th>Reference</th><th>Issued</th><th></th></tr></thead>
+          <thead><tr><th>Guest</th><th>Email</th><th>Ticket</th><th>Reference</th><th>Issued</th><th></th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
         <div class="empty" id="emptyState" hidden>No tickets yet.</div>

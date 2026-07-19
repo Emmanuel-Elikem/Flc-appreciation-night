@@ -49,13 +49,14 @@
   }
 
   function makeQr(el, text, size) {
-    if (!el || !window.QRCode) return;
+    if (!el) return;
+    if (!window.QRCode) { setTimeout(function () { makeQr(el, text, size); }, 120); return; }
     el.innerHTML = "";
-    new window.QRCode(el, { text: text, width: size, height: size, colorDark: "#120E08", colorLight: "#F4EEDF", correctLevel: window.QRCode.CorrectLevel.M });
+    try {
+      new window.QRCode(el, { text: text, width: size, height: size, colorDark: "#120E08", colorLight: "#F4EEDF", correctLevel: window.QRCode.CorrectLevel.M });
+    } catch (e) {}
   }
-  window.addEventListener("load", function () {
-    makeQr(document.getElementById("heroQr"), "APPRECIATION NIGHT \u00b7 First Love Church, Cape Coast", 92);
-  });
+  makeQr(document.getElementById("heroQr"), "APPRECIATION NIGHT \u00b7 First Love Church, Cape Coast", 92);
 
   function FlipUnit(root) {
     this.topS = root.querySelector(".flip__half--top .flip__num");

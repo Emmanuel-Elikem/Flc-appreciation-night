@@ -1,6 +1,7 @@
 /* APPRECIATION NIGHT — First Love Church, Cape Coast
-   Paystack keys read from window.ENV (see env.js) so you can
-   flip test → live by editing env.js only. */
+   Live runtime values (Paystack public key, price, test/live mode) are served
+   by /api/env from server-side settings, so the admin can change price and flip
+   test -> live without any code change. window.ENV is set before this file runs. */
 var ENV = (typeof window !== "undefined" && window.ENV) || {};
 window.EVENT_CONFIG = {
   eventName: "Appreciation Night",
@@ -14,9 +15,10 @@ window.EVENT_CONFIG = {
   venueArea: "Amamoma, UCC \u2014 Cape Coast",
   mapsUrl: "https://maps.google.com/?q=Metro+Plus+Hostel,+Amamoma,+UCC",
   dressCode: "A black tie affair",
-  priceGHS: 150,
+  priceGHS: (ENV.PRICE_GHS != null && !isNaN(Number(ENV.PRICE_GHS))) ? Number(ENV.PRICE_GHS) : 150,
   currency: "GHS",
   paystackPublicKey: ENV.PAYSTACK_PUBLIC_KEY || "",
+  mode: ENV.MODE || "test",
   adminPasscode: "dinner2026",
   supportContact: ""
 };
