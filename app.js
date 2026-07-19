@@ -193,14 +193,13 @@
   function closeModal() { modal.hidden = true; document.body.style.overflow = ""; }
   document.getElementById("closeModalBtn").addEventListener("click", closeModal);
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) closeModal(); });
-  document.getElementById("downloadBtn").addEventListener("click", function () {
-    var el = document.getElementById("realTicket");
-    if (!window.html2canvas) return;
-    var btn = this; btn.disabled = true; btn.textContent = "Preparing\u2026";
-    window.html2canvas(el, { scale: 3, backgroundColor: null, useCORS: true }).then(function (canvas) {
-      var a = document.createElement("a");
-      a.download = "AppreciationNight-" + document.getElementById("tkId").textContent + ".png";
-      a.href = canvas.toDataURL("image/png"); a.click();
-    }).finally(function () { btn.disabled = false; btn.textContent = "Download ticket"; });
+  document.getElementById("downloadBtn").addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var btn = this;
+    var id = document.getElementById("tkId").textContent;
+    if (window.TicketDownload) {
+      window.TicketDownload.download(document.getElementById("realTicket"), id, btn);
+    }
   });
 })();

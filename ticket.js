@@ -108,6 +108,14 @@
       show(ticketBox);
       makeQr(document.getElementById("realQr"), rec.id + " \u00b7 " + rec.name, 104);
       rendered = true;
+      // Pre-render ticket PNG in background so Save works instantly on iOS (needs user-gesture window)
+      setTimeout(function () {
+        if (window.TicketDownload) window.TicketDownload.prewarm(document.getElementById("realTicket"), rec.id);
+      }, 600);
+      var hint = document.getElementById("saveHintNote");
+      if (hint && window.TicketDownload && window.TicketDownload.isIOS()) {
+        hint.textContent = "Tap Save ticket \u2014 then choose Save Image or Add to Photos.";
+      }
     }
     // Sync to server once we have the best version of the record (prefer verified)
     if (!synced && (verified || !rec.demo)) {
@@ -159,15 +167,16 @@
     });
   }
 
-  document.getElementById("downloadBtn").addEventListener("click", function () {
-    var el = document.getElementById("realTicket");
-    if (!window.html2canvas) return;
-    var btn = this; btn.disabled = true; btn.textContent = "Preparing\u2026";
-    window.html2canvas(el, { scale: 3, backgroundColor: null, useCORS: true }).then(function (canvas) {
-      var a = document.createElement("a");
-      a.download = "AppreciationNight-" + document.getElementById("tkId").textContent + ".png";
-      a.href = canvas.toDataURL("image/png"); a.click();
-    }).finally(function () { btn.disabled = false; btn.textContent = "Download ticket"; });
+  document.getElementById("downloadBtn").addEventListener("click", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var btn = this;
+    var id = document.getElementById("tkId").textContent;
+    if (window.TicketDownload) {
+      window.TicketDownload.download(document.getElementById("realTicket"), id, btn);
+    } else {
+      alert("Still loading \u2014 please wait a moment and try again.");
+    }
   });
 
   boot();
