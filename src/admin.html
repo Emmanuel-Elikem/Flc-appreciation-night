@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Appreciation Night — Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <nav class="nav">
+    <a class="nav__brand" href="index.html">Appreciation <em>Night</em></a>
+    <a class="nav__link" href="index.html">Back to site</a>
+  </nav>
+  <main class="admin-shell">
+    <form class="gate" id="gate">
+      <p class="eyebrow">Admin only</p>
+      <h1>Guest list</h1>
+      <div class="field"><label for="passcode">Passcode</label><input id="passcode" type="password" autocomplete="off" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;"></div>
+      <p class="form-error" id="gateError">That passcode isn&rsquo;t right.</p>
+      <button class="btn btn--gold" type="submit">Open guest list</button>
+    </form>
+    <div id="dash" hidden>
+      <div class="section-head" style="text-align:left; margin-bottom:0;">
+        <p class="eyebrow">Admin</p>
+        <h2>The guest <em>list</em></h2>
+      </div>
+      <div class="admin-stats">
+        <div class="stat"><span>Tickets issued</span><strong id="statCount">0</strong></div>
+        <div class="stat"><span>Value</span><strong id="statRevenue">GHS 0</strong></div>
+        <div class="stat"><span>Ticket price</span><strong id="statPrice">GHS 0</strong></div>
+      </div>
+      <p class="admin-banner">Showing tickets issued on <strong>this device</strong>. Connect a database to sync across all devices.</p>
+      <div class="admin-toolbar">
+        <span class="eyebrow">Registrations</span>
+        <span>
+          <button class="btn btn--ghost" id="exportBtn" type="button" style="padding:10px 18px; font-size:12px;">Export CSV</button>
+          <button class="btn btn--ghost" id="signOutBtn" type="button" style="padding:10px 18px; font-size:12px;">Sign out</button>
+        </span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Guest</th><th>Email</th><th>Ticket</th><th>Reference</th><th>Issued</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="empty" id="emptyState" hidden>No tickets yet.</div>
+      </div>
+    </div>
+  </main>
+  <script src="env.js"></script>
+  <script src="config.js"></script>
+  <script src="admin.js" defer></script>
+</body>
+</html>

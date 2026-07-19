@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Appreciation Night — First Love Church, Cape Coast</title>
+  <meta name="description" content="A night to reflect on the goodness of God and honour the hands that serve. Friday, 24 July 2026 at Metro Kitchen, Amamoma — get your ticket.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230B0A08'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='%23E6C77F' font-family='Georgia'%3EA%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <nav class="nav">
+    <a class="nav__brand" href="#top">Appreciation <em>Night</em></a>
+    <a class="nav__link" href="#tickets">Get tickets</a>
+  </nav>
+
+  <header class="hero" id="top">
+    <p class="eyebrow">First Love Church, Cape Coast &middot; <span data-cfg="displayDateShort"></span></p>
+    <h1 class="hero__title">Appreciation<br><em>Night</em></h1>
+    <p class="hero__lede" data-cfg="tagline"></p>
+    <div class="hero__cta">
+      <a class="btn btn--gold" href="#tickets">Get your ticket</a>
+      <a class="btn btn--ghost" href="#venue">See the flyer</a>
+    </div>
+    <div class="ticket-scene" id="ticketScene">
+      <div class="ticket-float">
+        <div class="ticket" id="heroTicket">
+          <div class="ticket__main">
+            <div class="ticket__row"><span>Admit one</span><span>№ 0001</span></div>
+            <div class="ticket__event">Appreciation<br><em>Night</em></div>
+            <div class="ticket__meta">
+              <div><span>Date</span><strong data-cfg="displayDateShort"></strong></div>
+              <div><span>Time</span><strong data-cfg="displayTime"></strong></div>
+              <div><span>Venue</span><strong data-cfg="venueName"></strong></div>
+            </div>
+          </div>
+          <div class="ticket__perf"></div>
+          <div class="ticket__stub">
+            <div class="ticket__qr" id="heroQr"></div>
+            <div class="ticket__stubinfo">
+              <span>Reserved for</span>
+              <strong>You</strong>
+              <code>AN26-&bull;&bull;&bull;&bull;&bull;</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="section count reveal" id="countdown" aria-label="Countdown">
+    <p class="eyebrow" id="countLabel">Doors open in</p>
+    <div class="flipclock" id="flipclock">
+      <div class="flip" data-unit="days">
+        <div class="flip__card">
+          <div class="flip__half flip__half--top"><span class="flip__num">00</span></div>
+          <div class="flip__half flip__half--bottom"><span class="flip__num">00</span></div>
+          <div class="flip__flap flip__flap--top"><span class="flip__num">00</span></div>
+          <div class="flip__flap flip__flap--bottom"><span class="flip__num">00</span></div>
+          <div class="flip__hinge"></div>
+        </div>
+        <span class="flip__label">Days</span>
+      </div>
+      <div class="flip" data-unit="hours">
+        <div class="flip__card">
+          <div class="flip__half flip__half--top"><span class="flip__num">00</span></div>
+          <div class="flip__half flip__half--bottom"><span class="flip__num">00</span></div>
+          <div class="flip__flap flip__flap--top"><span class="flip__num">00</span></div>
+          <div class="flip__flap flip__flap--bottom"><span class="flip__num">00</span></div>
+          <div class="flip__hinge"></div>
+        </div>
+        <span class="flip__label">Hours</span>
+      </div>
+      <div class="flip" data-unit="minutes">
+        <div class="flip__card">
+          <div class="flip__half flip__half--top"><span class="flip__num">00</span></div>
+          <div class="flip__half flip__half--bottom"><span class="flip__num">00</span></div>
+          <div class="flip__flap flip__flap--top"><span class="flip__num">00</span></div>
+          <div class="flip__flap flip__flap--bottom"><span class="flip__num">00</span></div>
+          <div class="flip__hinge"></div>
+        </div>
+        <span class="flip__label">Minutes</span>
+      </div>
+      <div class="flip" data-unit="seconds">
+        <div class="flip__card">
+          <div class="flip__half flip__half--top"><span class="flip__num">00</span></div>
+          <div class="flip__half flip__half--bottom"><span class="flip__num">00</span></div>
+          <div class="flip__flap flip__flap--top"><span class="flip__num">00</span></div>
+          <div class="flip__flap flip__flap--bottom"><span class="flip__num">00</span></div>
+          <div class="flip__hinge"></div>
+        </div>
+        <span class="flip__label">Seconds</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal" aria-label="Event details">
+    <div class="section-head">
+      <p class="eyebrow">The details</p>
+      <h2>An evening of <em>gratitude</em></h2>
+    </div>
+    <div class="menu-card">
+      <dl>
+        <div><dt>When</dt><dd><span data-cfg="displayDate"></span><small>Starts <span data-cfg="displayTime"></span> — sharp.</small></dd></div>
+        <div><dt>Where</dt><dd><span data-cfg="venueName"></span><small><span data-cfg="venueArea"></span></small></dd></div>
+        <div><dt>Dress code</dt><dd><span data-cfg="dressCode"></span><small>Come in your dinner best.</small></dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section reveal" id="venue" aria-label="Venue and flyer">
+    <div class="section-head">
+      <p class="eyebrow">Find us</p>
+      <h2>The <em>venue</em></h2>
+    </div>
+    <div class="venue2">
+      <div class="venue2__flyer"><img src="flyer.jpg" alt="Appreciation Night flyer — First Love Church, Cape Coast"></div>
+      <div class="venue2__info">
+        <p class="eyebrow">Venue</p>
+        <h3 data-cfg="venueName"></h3>
+        <p data-cfg="venueArea"></p>
+        <a class="btn btn--gold" id="directionsBtn" target="_blank" rel="noopener">Get directions</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal" id="tickets" aria-label="Get a ticket">
+    <div class="section-head">
+      <p class="eyebrow">Tickets</p>
+      <h2>Your seat at the <em>table</em></h2>
+    </div>
+    <div class="buy__grid">
+      <form class="buy__form" id="buyForm" novalidate>
+        <div class="field">
+          <label for="buyerName">Full name</label>
+          <input id="buyerName" name="name" type="text" autocomplete="name" placeholder="Ama Mensah" required>
+        </div>
+        <div class="field">
+          <label for="buyerEmail">Email</label>
+          <input id="buyerEmail" name="email" type="email" autocomplete="email" placeholder="ama@example.com" required>
+        </div>
+        <p class="form-error" id="formError">Please enter your full name and a valid email.</p>
+        <div class="buy__price"><span>1 ticket</span><strong data-price></strong></div>
+        <button class="btn btn--gold" id="payBtn" type="submit">Pay <span data-price></span> with Paystack</button>
+        <p class="form-note" id="payNote">Secure payment via Paystack. Your name goes on your ticket.</p>
+      </form>
+      <div class="buy__aside">
+        <p>Pay in under a minute, and your ticket is issued instantly — a beautiful digital pass with your name and a unique QR code, ready to download and show at the door.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <a class="nav__brand" href="#top">Appreciation <em>Night</em></a>
+    <p>First Love Church, Cape Coast</p>
+    <p id="supportRow">Questions? <a id="supportLink" href="#"></a></p>
+    <p><span data-cfg="displayDate"></span> &middot; <span data-cfg="venueName"></span>, <span data-cfg="venueArea"></span></p>
+  </footer>
+
+  <div class="modal" id="ticketModal" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 class="modal__title" id="modalTitle">You&rsquo;re <em>in</em>.</h2>
+    <p class="modal__sub">Download your ticket and keep it safe — you&rsquo;ll show it at the door.</p>
+    <div class="ticket" id="realTicket">
+      <div class="ticket__main">
+        <div class="ticket__row"><span>Admit one</span><span id="tkNo">№ 0001</span></div>
+        <div class="ticket__event">Appreciation<br><em>Night</em></div>
+        <div class="ticket__meta">
+          <div><span>Church</span><strong>First Love, Cape Coast</strong></div>
+          <div><span>Date</span><strong data-cfg="displayDateShort"></strong></div>
+          <div><span>Time</span><strong data-cfg="displayTime"></strong></div>
+          <div><span>Venue</span><strong data-cfg="venueName"></strong></div>
+        </div>
+      </div>
+      <div class="ticket__perf"></div>
+      <div class="ticket__stub">
+        <div class="ticket__qr" id="realQr"></div>
+        <div class="ticket__stubinfo">
+          <span>Guest</span>
+          <strong id="tkName">Your Name</strong>
+          <code id="tkId">AN26-00000</code>
+        </div>
+      </div>
+    </div>
+    <div class="modal__actions">
+      <button class="btn btn--gold" id="downloadBtn" type="button">Download ticket</button>
+      <button class="btn btn--ghost" id="closeModalBtn" type="button">Done</button>
+    </div>
+  </div>
+
+  <script src="env.js"></script>
+  <script src="config.js"></script>
+  <script src="https://js.paystack.co/v1/inline.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="app.js" defer></script>
+</body>
+</html>
