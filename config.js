@@ -19,6 +19,5 @@ window.EVENT_CONFIG = {
   currency: "GHS",
   paystackPublicKey: ENV.PAYSTACK_PUBLIC_KEY || "",
   mode: ENV.MODE || "test",
-  adminPasscode: "dinner2026",
   supportContact: ""
 };

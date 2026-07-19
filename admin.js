@@ -121,11 +121,26 @@
   gate.addEventListener("submit", function (e) {
     e.preventDefault();
     var val = document.getElementById("passcode").value;
-    if (val === C.adminPasscode) {
-      try { sessionStorage.setItem(SESSION_KEY, "1"); sessionStorage.setItem(PASS_KEY, val); } catch (err) {}
-      gateError.classList.remove("show");
-      open();
-    } else { gateError.classList.add("show"); }
+    var submitBtn = gate.querySelector('button[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; }
+    gateError.classList.remove("show");
+    // Authenticate against the server (passcode lives only in ADMIN_PASSCODE env var).
+    fetch("/api/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ passcode: val, action: "getSettings" })
+    })
+      .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+      .then(function (res) {
+        if (res.status === 200 && res.body && res.body.ok) {
+          try { sessionStorage.setItem(SESSION_KEY, "1"); sessionStorage.setItem(PASS_KEY, val); } catch (err) {}
+          open();
+        } else {
+          gateError.classList.add("show");
+        }
+      })
+      .catch(function () { gateError.classList.add("show"); })
+      .finally(function () { if (submitBtn) { submitBtn.disabled = false; } });
   });
 
   try { if (sessionStorage.getItem(SESSION_KEY) === "1") open(); } catch (e) {}
