@@ -133,12 +133,8 @@
     setLoading(false);
     var id = genId(), count = 1;
     try { count = (JSON.parse(localStorage.getItem(STORE_KEY) || "[]").length || 0) + 1; } catch (e) {}
-    savePurchase({ id: id, name: name, email: email, ref: ref, amount: C.priceGHS, currency: C.currency, demo: !!demo, ts: new Date().toISOString() });
-    document.getElementById("tkName").textContent = name;
-    document.getElementById("tkId").textContent = id;
-    document.getElementById("tkNo").textContent = "\u2116 " + String(count).padStart(4, "0");
-    makeQr(document.getElementById("realQr"), id + " \u00b7 " + name, 104);
-    openModal();
+    savePurchase({ id: id, no: count, name: name, email: email, ref: ref, amount: C.priceGHS, currency: C.currency, demo: !!demo, ts: new Date().toISOString() });
+    window.location.href = "ticket.html?reference=" + encodeURIComponent(ref);
   }
   function startPayment(name, email) {
     setLoading(true);
