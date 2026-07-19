@@ -50,10 +50,30 @@
 
   function makeQr(el, text, size) {
     if (!el) return;
-    if (!window.QRCode) { setTimeout(function () { makeQr(el, text, size); }, 120); return; }
-    el.innerHTML = "";
+    if (!window.qrcode) { setTimeout(function () { makeQr(el, text, size); }, 100); return; }
     try {
-      new window.QRCode(el, { text: text, width: size, height: size, colorDark: "#120E08", colorLight: "#F4EEDF", correctLevel: window.QRCode.CorrectLevel.M });
+      var qr = window.qrcode(0, "M");
+      qr.addData(text);
+      qr.make();
+      var count = qr.getModuleCount();
+      var margin = 2;
+      var total = count + margin * 2;
+      var dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+      var scale = Math.max(1, Math.floor((size * dpr) / total));
+      var px = total * scale;
+      var canvas = document.createElement("canvas");
+      canvas.width = px; canvas.height = px;
+      canvas.style.width = size + "px"; canvas.style.height = size + "px"; canvas.style.display = "block";
+      var ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#F4EEDF"; ctx.fillRect(0, 0, px, px);
+      ctx.fillStyle = "#120E08";
+      for (var r = 0; r < count; r++) {
+        for (var c = 0; c < count; c++) {
+          if (qr.isDark(r, c)) ctx.fillRect((c + margin) * scale, (r + margin) * scale, scale, scale);
+        }
+      }
+      el.innerHTML = "";
+      el.appendChild(canvas);
     } catch (e) {}
   }
   makeQr(document.getElementById("heroQr"), "APPRECIATION NIGHT \u00b7 First Love Church, Cape Coast", 92);
