@@ -24,7 +24,7 @@
     <p class="hero__lede" data-cfg="tagline"></p>
     <div class="hero__cta">
       <a class="btn btn--gold" href="#tickets">Get your ticket</a>
-      <a class="btn btn--ghost" href="#venue">See the flyer</a>
+      <a class="btn btn--ghost" href="#venue">View Restaurant</a>
     </div>
     <div class="ticket-scene" id="ticketScene">
       <div class="ticket-float">
@@ -51,6 +51,12 @@
       </div>
     </div>
   </header>
+
+  <section class="section poster reveal" id="flyer" aria-label="Event flyer">
+    <div class="poster__frame">
+      <img src="poster.jpg" alt="Appreciation Night flyer — First Love Church, Cape Coast · Friday, 24 July 2026 at Metro Kitchen, Amamoma">
+    </div>
+  </section>
 
   <section class="section count reveal" id="countdown" aria-label="Countdown">
     <p class="eyebrow" id="countLabel">Doors open in</p>
@@ -112,13 +118,13 @@
     </div>
   </section>
 
-  <section class="section reveal" id="venue" aria-label="Venue and flyer">
+  <section class="section reveal" id="venue" aria-label="The restaurant">
     <div class="section-head">
       <p class="eyebrow">Find us</p>
-      <h2>The <em>venue</em></h2>
+      <h2>The <em>restaurant</em></h2>
     </div>
     <div class="venue2">
-      <div class="venue2__flyer"><img src="flyer.jpg" alt="Appreciation Night flyer — First Love Church, Cape Coast"></div>
+      <div class="venue2__flyer"><img src="flyer.jpg" alt="Metro Kitchen, Amamoma — the venue for Appreciation Night"></div>
       <div class="venue2__info">
         <p class="eyebrow">Venue</p>
         <h3 data-cfg="venueName"></h3>
@@ -191,7 +197,7 @@
     </div>
   </div>
 
-  <script src="env.js"></script>
+  <script src="/api/env"></script>
   <script src="config.js"></script>
   <script src="https://js.paystack.co/v1/inline.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
