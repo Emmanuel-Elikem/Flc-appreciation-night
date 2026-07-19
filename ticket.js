@@ -26,6 +26,17 @@
     return "AN26-" + out;
   }
 
+  // Sync a ticket record to the server (fire-and-forget; localStorage is the fallback).
+  function syncToServer(rec) {
+    try {
+      fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(rec)
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
   function applyConfig(root) {
     (root || document).querySelectorAll("[data-cfg]").forEach(function (el) {
       var k = el.getAttribute("data-cfg");
@@ -80,6 +91,7 @@
   }
 
   var rendered = false;
+  var synced = false;
   function renderTicket(rec, verified) {
     applyConfig(document);
     document.getElementById("tkName").textContent = rec.name || "Guest";
@@ -97,6 +109,11 @@
       makeQr(document.getElementById("realQr"), rec.id + " \u00b7 " + rec.name, 104);
       rendered = true;
     }
+    // Sync to server once we have the best version of the record (prefer verified)
+    if (!synced && (verified || !rec.demo)) {
+      synced = true;
+      syncToServer(rec);
+    }
   }
 
   function verify(ref) {
@@ -109,7 +126,6 @@
     if (!reference) { showError("No payment reference was provided in the link."); return; }
 
     var rec = findByRef(reference);
-    // If we already have a local record, show it right away for a fast experience.
     if (rec) renderTicket(rec, false);
 
     verify(reference).then(function (v) {
@@ -127,10 +143,13 @@
         } else {
           if (v.name) rec.name = v.name;
           if (v.email) rec.email = v.email;
+          // Update in local storage
+          var l = readList();
+          for (var i = 0; i < l.length; i++) { if (l[i] && l[i].ref === reference) { l[i] = rec; break; } }
+          writeList(l);
         }
         renderTicket(rec, true);
       } else if (rec) {
-        // Couldn't confirm with the server, but we have a device record — still show it.
         renderTicket(rec, false);
       } else if (v && v.reason === "verification_unavailable") {
         showError("We couldn\u2019t confirm this payment on this device. If you just paid, open this page on the device you paid from \u2014 your ticket is saved there.");
