@@ -11,6 +11,29 @@
   document.querySelectorAll("[data-price]").forEach(function (el) {
     el.textContent = C.currency + " " + C.priceGHS;
   });
+
+  var pricing = (window.PaystackFees && window.PaystackFees.compute)
+    ? window.PaystackFees.compute(C.priceGHS)
+    : { ticketGHS: C.priceGHS, feeGHS: 0, totalGHS: C.priceGHS, totalPesewas: Math.round(C.priceGHS * 100) };
+  var fmtMoney = window.PaystackFees ? window.PaystackFees.fmt : function (n) { return String(n); };
+  var payBtnHTML = "";
+
+  function renderPricing() {
+    if (window.PaystackFees && window.PaystackFees.compute) {
+      pricing = window.PaystackFees.compute(C.priceGHS);
+    }
+    var cur = C.currency || "GHS";
+    var ticketEl = document.getElementById("priceTicket");
+    var feeEl = document.getElementById("priceFee");
+    var totalEl = document.getElementById("priceTotal");
+    var btnAmt = document.getElementById("payBtnAmount");
+    if (ticketEl) ticketEl.textContent = cur + " " + fmtMoney(pricing.ticketGHS);
+    if (feeEl) feeEl.textContent = cur + " " + fmtMoney(pricing.feeGHS);
+    if (totalEl) totalEl.textContent = cur + " " + fmtMoney(pricing.totalGHS);
+    if (btnAmt) btnAmt.textContent = cur + " " + fmtMoney(pricing.totalGHS);
+    payBtnHTML = "Pay " + cur + " " + fmtMoney(pricing.totalGHS) + " with Paystack";
+    if (payBtn) payBtn.innerHTML = payBtnHTML;
+  }
   var support = document.getElementById("supportLink");
   var supportRow = document.getElementById("supportRow");
   if (support && C.supportContact) {
@@ -136,7 +159,7 @@
   var payBtn = document.getElementById("payBtn");
   var payNote = document.getElementById("payNote");
   var formError = document.getElementById("formError");
-  var payBtnHTML = payBtn ? payBtn.innerHTML : "";
+  renderPricing();
   if (payNote && !C.paystackPublicKey) {
     payNote.textContent = "Preview mode \u2014 no Paystack key set. Enter your details to preview the ticket.";
     payNote.classList.add("form-note--demo");
@@ -163,8 +186,13 @@
       try {
         var handler = window.PaystackPop.setup({
           key: C.paystackPublicKey, email: email,
-          amount: Math.round(C.priceGHS * 100), currency: C.currency || "GHS",
-          metadata: { custom_fields: [{ display_name: "Full name", variable_name: "full_name", value: name }] },
+          amount: pricing.totalPesewas, currency: C.currency || "GHS",
+          metadata: {
+            custom_fields: [
+              { display_name: "Full name", variable_name: "full_name", value: name },
+              { display_name: "Ticket price", variable_name: "ticket_price", value: String(C.priceGHS) }
+            ]
+          },
           callback: function (res) { issueTicket(name, email, res.reference, false); },
           onClose: function () { setLoading(false); }
         });

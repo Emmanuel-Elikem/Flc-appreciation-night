@@ -150,9 +150,13 @@
           <input id="buyerEmail" name="email" type="email" autocomplete="email" placeholder="ama@example.com" required>
         </div>
         <p class="form-error" id="formError">Please enter your full name and a valid email.</p>
-        <div class="buy__price"><span>1 ticket</span><strong data-price></strong></div>
-        <button class="btn btn--gold" id="payBtn" type="submit">Pay <span data-price></span> with Paystack</button>
-        <p class="form-note" id="payNote">Secure payment via Paystack. Your name goes on your ticket.</p>
+        <div class="buy__price">
+          <div class="price-line"><span>1 ticket</span><strong id="priceTicket"></strong></div>
+          <div class="price-line price-line--fee"><span>Processing fee</span><strong id="priceFee"></strong></div>
+          <div class="price-line price-line--total"><span>Total</span><strong id="priceTotal"></strong></div>
+        </div>
+        <button class="btn btn--gold" id="payBtn" type="submit">Pay <span id="payBtnAmount"></span> with Paystack</button>
+        <p class="form-note" id="payNote">Secure payment via Paystack. Processing fee is included so the full ticket price goes to the event.</p>
       </form>
       <div class="buy__aside">
         <p>Pay in under a minute, and your ticket is issued instantly — a beautiful digital pass with your name and a unique QR code, ready to download and show at the door.</p>
@@ -199,6 +203,7 @@
 
   <script src="/api/env"></script>
   <script src="config.js"></script>
+  <script src="fees.js"></script>
   <script src="https://js.paystack.co/v1/inline.js" defer></script>
   <script src="vendor/qrcode-generator.min.js" defer></script>
   <script src="vendor/html2canvas.min.js" defer></script>

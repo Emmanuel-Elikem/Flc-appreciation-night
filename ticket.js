@@ -143,7 +143,7 @@
           rec = {
             id: genId(), no: count,
             name: v.name || "Guest", email: v.email || "",
-            ref: reference, amount: v.amount != null ? v.amount : C.priceGHS,
+            ref: reference, amount: C.priceGHS, paidAmount: v.amount != null ? v.amount : null,
             currency: v.currency || C.currency, demo: false,
             ts: v.paidAt || new Date().toISOString()
           };
