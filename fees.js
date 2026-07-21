@@ -1,8 +1,8 @@
-/* Paystack Ghana local transaction fee (1.95% — cards, MoMo, bank transfer).
+/* Paystack Ghana local transaction fee (2% — cards, MoMo, bank transfer).
    Gross-up so the organiser nets the full ticket price after Paystack deducts their cut. */
 (function () {
   "use strict";
-  var RATE = 0.0195;
+  var RATE = 0.02;
 
   function compute(ticketGHS) {
     var net = Math.round(Number(ticketGHS) * 100);
