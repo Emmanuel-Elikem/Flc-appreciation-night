@@ -1,13 +1,15 @@
 // Synced guest list — no longer writes tickets into Edge Config (Hobby 8KB cap).
 //
 // Sources (merged):
-//   1. data/tickets-seed.json  — the 37 tickets already sold before the size limit
+//   1. data/tickets-seed.json  — tickets sold before the size limit
 //   2. Paystack successful transactions — every new payment (live/test by mode)
 //   3. Edge Config key "deleted" — refs/ids soft-deleted from admin
+//   4. Edge Config key "present" — refs/ids marked checked-in at the door
 //
-// GET    /api/tickets?passcode=...          → list (passcode required)
-// POST   /api/tickets                       → accepted (idempotent; Paystack is source of truth)
-// DELETE /api/tickets?id=...&passcode=...   → soft-delete (passcode required)
+// GET    /api/tickets?passcode=...
+// POST   /api/tickets  { id }                         → ticket page noop
+// POST   /api/tickets  { passcode, action:"setPresent", id, ref, present }
+// DELETE /api/tickets?id=...&passcode=...
 
 var S = require("./_settings");
 var fs = require("fs");
@@ -44,22 +46,22 @@ function loadSeed() {
   return [];
 }
 
-async function readDeleted() {
+async function readList(key) {
   if (!EC_ID || !EC_RTOK) return [];
   try {
     var r = await fetch(
-      "https://edge-config.vercel.com/" + EC_ID + "/item/deleted?token=" + EC_RTOK,
+      "https://edge-config.vercel.com/" + EC_ID + "/item/" + key + "?token=" + EC_RTOK,
       { cache: "no-store" }
     );
     if (!r.ok) return [];
     var v = await r.json();
-    return Array.isArray(v) ? v : [];
+    return Array.isArray(v) ? v.map(String) : [];
   } catch (e) {
     return [];
   }
 }
 
-async function writeDeleted(list) {
+async function writeList(key, list) {
   if (!EC_ID || !V_TOK) return { ok: false, reason: "store_unconfigured" };
   var url =
     "https://api.vercel.com/v1/edge-config/" +
@@ -74,7 +76,7 @@ async function writeDeleted(list) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        items: [{ operation: "upsert", key: "deleted", value: list }]
+        items: [{ operation: "upsert", key: key, value: list }]
       })
     });
     return r.ok ? { ok: true } : { ok: false, reason: "write_failed", status: r.status };
@@ -143,9 +145,11 @@ async function fetchPaystackTickets(mode) {
   return out;
 }
 
-function mergeTickets(seed, paystack, deleted) {
+function mergeTickets(seed, paystack, deleted, present) {
   var del = {};
   for (var i = 0; i < deleted.length; i++) del[String(deleted[i])] = true;
+  var presentSet = {};
+  for (var p = 0; p < present.length; p++) presentSet[String(present[p])] = true;
   var byKey = {};
 
   function add(t) {
@@ -160,15 +164,21 @@ function mergeTickets(seed, paystack, deleted) {
       byKey[key] = t;
       return;
     }
-    // Prefer seed/local AN26 ids and richer names over derived ones
-    if ((prev.source === "paystack") && t.source !== "paystack") byKey[key] = Object.assign({}, prev, t, { ref: prev.ref || t.ref });
-    else if (!prev.name || prev.name === "Guest") byKey[key] = Object.assign({}, prev, { name: t.name || prev.name, email: t.email || prev.email });
+    if ((prev.source === "paystack") && t.source !== "paystack") {
+      byKey[key] = Object.assign({}, prev, t, { ref: prev.ref || t.ref, id: t.id || prev.id });
+    } else if (!prev.name || prev.name === "Guest") {
+      byKey[key] = Object.assign({}, prev, { name: t.name || prev.name, email: t.email || prev.email });
+    }
   }
 
   for (var s = 0; s < seed.length; s++) add(Object.assign({}, seed[s], { source: "seed" }));
-  for (var p = 0; p < paystack.length; p++) add(paystack[p]);
+  for (var q = 0; q < paystack.length; q++) add(paystack[q]);
 
-  var list = Object.keys(byKey).map(function (k) { return byKey[k]; });
+  var list = Object.keys(byKey).map(function (k) {
+    var t = byKey[k];
+    t.present = !!(presentSet[t.ref] || presentSet[t.id]);
+    return t;
+  });
   list.sort(function (a, b) {
     return (b.ts || "") < (a.ts || "") ? -1 : 1;
   });
@@ -188,20 +198,51 @@ module.exports = async function handler(req, res) {
     var settings = await S.readSettings();
     var seed = loadSeed();
     var paystack = await fetchPaystackTickets(settings.mode);
-    var deleted = await readDeleted();
-    var tickets = mergeTickets(seed, paystack, deleted);
+    var deleted = await readList("deleted");
+    var present = await readList("present");
+    var tickets = mergeTickets(seed, paystack, deleted, present);
+    var inCount = tickets.filter(function (t) { return t.present; }).length;
     return res.status(200).json({
       ok: true,
       tickets: tickets,
       count: tickets.length,
-      sources: { seed: seed.length, paystack: paystack.length, deleted: deleted.length }
+      presentCount: inCount,
+      notPresentCount: tickets.length - inCount,
+      sources: { seed: seed.length, paystack: paystack.length, deleted: deleted.length, present: present.length }
     });
   }
 
   if (req.method === "POST") {
-    // Accepted for backward compatibility with the ticket page.
-    // New payments are listed from Paystack; no Edge Config write (size limit).
     var body = await readBody(req);
+
+    // Door check-in / undo
+    if (body && body.action === "setPresent") {
+      if (!ADMIN || body.passcode !== ADMIN) {
+        return res.status(401).json({ ok: false, reason: "unauthorized" });
+      }
+      var id = String(body.id || "");
+      var ref = String(body.ref || "");
+      if (!id && !ref) return res.status(400).json({ ok: false, reason: "missing_id" });
+
+      var present = await readList("present");
+      var keys = [id, ref].filter(Boolean);
+      var want = !!body.present;
+
+      if (want) {
+        for (var i = 0; i < keys.length; i++) {
+          if (present.indexOf(keys[i]) === -1) present.push(keys[i]);
+        }
+      } else {
+        present = present.filter(function (k) { return keys.indexOf(k) === -1; });
+      }
+      if (present.length > 800) present = present.slice(-800);
+
+      var result = await writeList("present", present);
+      if (!result.ok) return res.status(500).json(result);
+      return res.status(200).json({ ok: true, present: want, presentCount: present.length });
+    }
+
+    // Ticket page sync (noop — Paystack is source of truth)
     if (!body || !body.id) {
       return res.status(400).json({ ok: false, reason: "invalid_ticket" });
     }
@@ -210,21 +251,19 @@ module.exports = async function handler(req, res) {
 
   if (req.method === "DELETE") {
     var pass = url.searchParams.get("passcode") || "";
-    var id = url.searchParams.get("id") || "";
+    var delId = url.searchParams.get("id") || "";
     if (!ADMIN || pass !== ADMIN) {
       return res.status(401).json({ ok: false, reason: "unauthorized" });
     }
-    if (!id) return res.status(400).json({ ok: false, reason: "missing_id" });
+    if (!delId) return res.status(400).json({ ok: false, reason: "missing_id" });
 
-    // Soft-delete by id (and matching ref if provided)
-    var deleted = await readDeleted();
-    if (deleted.indexOf(id) === -1) deleted.push(id);
-    var ref = url.searchParams.get("ref") || "";
-    if (ref && deleted.indexOf(ref) === -1) deleted.push(ref);
-    // Keep list small
+    var deleted = await readList("deleted");
+    if (deleted.indexOf(delId) === -1) deleted.push(delId);
+    var delRef = url.searchParams.get("ref") || "";
+    if (delRef && deleted.indexOf(delRef) === -1) deleted.push(delRef);
     if (deleted.length > 400) deleted = deleted.slice(-400);
-    var result = await writeDeleted(deleted);
-    return res.status(result.ok ? 200 : 500).json(result);
+    var delResult = await writeList("deleted", deleted);
+    return res.status(delResult.ok ? 200 : 500).json(delResult);
   }
 
   return res.status(405).json({ ok: false, reason: "method_not_allowed" });

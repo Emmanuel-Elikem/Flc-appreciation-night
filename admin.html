@@ -56,12 +56,18 @@
 
       <div class="admin-stats">
         <div class="stat"><span>Tickets issued</span><strong id="statCount">0</strong></div>
+        <div class="stat stat--in"><span>Checked in</span><strong id="statIn">0</strong></div>
+        <div class="stat stat--out"><span>Not in yet</span><strong id="statOut">0</strong></div>
         <div class="stat"><span>Value</span><strong id="statRevenue">GHS 0</strong></div>
-        <div class="stat"><span>Ticket price</span><strong id="statPrice">GHS 0</strong></div>
       </div>
       <div class="admin-toolbar">
         <div class="search-wrap">
           <input class="search-input" id="searchInput" type="search" placeholder="Search name, email or ticket ID&hellip;" autocomplete="off">
+        </div>
+        <div class="filter-toggle" role="group" aria-label="Filter by check-in">
+          <button type="button" class="filter-btn is-active" data-filter="all">All</button>
+          <button type="button" class="filter-btn" data-filter="in">In</button>
+          <button type="button" class="filter-btn" data-filter="out">Not in</button>
         </div>
         <span class="admin-toolbar__actions">
           <button class="btn btn--ghost" id="refreshBtn" type="button" style="padding:10px 18px; font-size:12px;">Refresh</button>
@@ -72,7 +78,7 @@
       <p class="admin-sync-status" id="syncStatus"></p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Guest</th><th>Email</th><th>Ticket</th><th>Reference</th><th>Issued</th><th></th><th></th></tr></thead>
+          <thead><tr><th>Guest</th><th>Email</th><th>Ticket</th><th>Reference</th><th>Issued</th><th>Status</th><th></th></tr></thead>
           <tbody id="rows"></tbody>
         </table>
         <div class="empty" id="emptyState" hidden>No tickets yet.</div>

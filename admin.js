@@ -12,8 +12,8 @@
   function fmtDate(iso) { try { return new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }); } catch (e) { return iso || ""; } }
   function currentPass() { try { return sessionStorage.getItem(PASS_KEY) || ""; } catch (e) { return ""; } }
 
-  // ── Ticket list (server-fetched) ────────────────────────────────────
   var allTickets = [];
+  var presenceFilter = "all"; // all | in | out
 
   function setSyncStatus(msg, cls) {
     var el = document.getElementById("syncStatus");
@@ -32,48 +32,64 @@
         }
         allTickets = res.tickets || [];
         var ts = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-        setSyncStatus("Synced across all devices \u00b7 last updated " + ts, "ok");
-        renderTickets(allTickets);
-        updateStats(allTickets);
+        setSyncStatus("Full paid list from Paystack \u00b7 last updated " + ts, "ok");
+        renderTickets();
+        updateStats();
       })
       .catch(function () { setSyncStatus("Network error. Try refreshing.", "err"); });
   }
 
-  function renderTickets(list) {
+  function filteredList() {
     var query = (document.getElementById("searchInput").value || "").trim().toLowerCase();
-    var filtered = query
-      ? list.filter(function (r) {
-          return (r.name || "").toLowerCase().includes(query) ||
-            (r.email || "").toLowerCase().includes(query) ||
-            (r.id || "").toLowerCase().includes(query) ||
-            (r.ref || "").toLowerCase().includes(query);
-        })
-      : list;
+    return allTickets.filter(function (r) {
+      if (presenceFilter === "in" && !r.present) return false;
+      if (presenceFilter === "out" && r.present) return false;
+      if (!query) return true;
+      return (r.name || "").toLowerCase().includes(query) ||
+        (r.email || "").toLowerCase().includes(query) ||
+        (r.id || "").toLowerCase().includes(query) ||
+        (r.ref || "").toLowerCase().includes(query);
+    });
+  }
 
+  function renderTickets() {
+    var filtered = filteredList();
     document.getElementById("rows").innerHTML = filtered.map(function (r) {
-      return "<tr>" +
+      var present = !!r.present;
+      return "<tr class=\"" + (present ? "row--in" : "") + "\">" +
         "<td>" + esc(r.name) + "</td>" +
         "<td class=\"col-email\">" + esc(r.email) + "</td>" +
         "<td><code>" + esc(r.id) + "</code></td>" +
         "<td class=\"col-ref\"><code>" + esc(r.ref) + "</code></td>" +
         "<td>" + esc(fmtDate(r.ts)) + "</td>" +
-        "<td>" + (r.demo ? '<span class="tag">Test</span>' : "") + "</td>" +
-        "<td><button type=\"button\" class=\"row-del\" data-id=\"" + esc(r.id) + "\" data-ref=\"" + esc(r.ref || "") + "\" aria-label=\"Delete ticket\">Delete</button></td>" +
-        "</tr>";
+        "<td>" +
+          (present
+            ? '<span class="tag tag--in">In</span>'
+            : '<span class="tag tag--out">Not in</span>') +
+          (r.demo ? ' <span class="tag">Test</span>' : "") +
+        "</td>" +
+        "<td class=\"row-actions\">" +
+          "<button type=\"button\" class=\"row-check" + (present ? " is-in" : "") + "\" data-id=\"" + esc(r.id) + "\" data-ref=\"" + esc(r.ref || "") + "\" data-present=\"" + (present ? "1" : "0") + "\">" +
+            (present ? "Undo" : "Mark in") +
+          "</button>" +
+        "</td>" +
+      "</tr>";
     }).join("");
-
     document.getElementById("emptyState").hidden = filtered.length > 0;
   }
 
-  function updateStats(list) {
+  function updateStats() {
     var C_cfg = window.EVENT_CONFIG || {};
-    document.getElementById("statCount").textContent = list.filter(function (r) { return !r.demo; }).length;
-    var revenue = list.filter(function (r) { return !r.demo; }).reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
+    var real = allTickets.filter(function (r) { return !r.demo; });
+    var inCount = real.filter(function (r) { return r.present; }).length;
+    document.getElementById("statCount").textContent = real.length;
+    document.getElementById("statIn").textContent = inCount;
+    document.getElementById("statOut").textContent = real.length - inCount;
+    var revenue = real.reduce(function (s, r) { return s + (Number(r.amount) || 0); }, 0);
     document.getElementById("statRevenue").textContent = (C_cfg.currency || "GHS") + " " + revenue;
-    document.getElementById("statPrice").textContent = (C_cfg.currency || "GHS") + " " + (C_cfg.priceGHS || "—");
   }
 
-  // ── Settings (price + test/live) ─────────────────────────────────────
+  // ── Settings ─────────────────────────────────────────────────────────
   var priceInput = document.getElementById("priceInput");
   var modePill = document.getElementById("modePill");
   var statusEl = document.getElementById("settingsStatus");
@@ -137,7 +153,6 @@
       .finally(function () { btn.disabled = false; });
   }
 
-  // ── Auth ─────────────────────────────────────────────────────────────
   function open() {
     gate.hidden = true;
     dash.hidden = false;
@@ -176,60 +191,79 @@
     dash.hidden = true; gate.hidden = false; document.getElementById("passcode").value = "";
   });
 
-  // ── Delete ───────────────────────────────────────────────────────────
+  // ── Row actions: Mark in / Undo ──────────────────────────────────────
   document.getElementById("rows").addEventListener("click", function (e) {
-    var btn = e.target.closest ? e.target.closest(".row-del") : null;
-    if (!btn) return;
-    var id = btn.getAttribute("data-id");
-    if (!window.confirm("Delete " + id + " from the guest list? This can\u2019t be undone.")) return;
-    btn.disabled = true; btn.textContent = "\u2026";
-    fetch("/api/tickets?id=" + encodeURIComponent(id) + "&passcode=" + encodeURIComponent(currentPass()) + (btn.getAttribute("data-ref") ? "&ref=" + encodeURIComponent(btn.getAttribute("data-ref")) : ""), { method: "DELETE" })
-      .then(function (r) { return r.json(); })
-      .then(function (res) {
-        if (res && res.ok) {
-          allTickets = allTickets.filter(function (t) { return t.id !== id; });
-          renderTickets(allTickets);
-          updateStats(allTickets);
-          setSyncStatus("Ticket " + id + " deleted.", "ok");
-          // Also remove from localStorage if present
-          try {
-            var l = JSON.parse(localStorage.getItem(STORE_KEY) || "[]");
-            localStorage.setItem(STORE_KEY, JSON.stringify(l.filter(function (t) { return t.id !== id; })));
-          } catch (ex) {}
-        } else {
-          btn.disabled = false; btn.textContent = "Delete";
-          setSyncStatus("Couldn\u2019t delete. Try again.", "err");
-        }
+    var checkBtn = e.target.closest ? e.target.closest(".row-check") : null;
+    if (checkBtn) {
+      var id = checkBtn.getAttribute("data-id");
+      var ref = checkBtn.getAttribute("data-ref") || "";
+      var currentlyIn = checkBtn.getAttribute("data-present") === "1";
+      var next = !currentlyIn;
+      checkBtn.disabled = true;
+      checkBtn.textContent = "\u2026";
+      fetch("/api/tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          passcode: currentPass(),
+          action: "setPresent",
+          id: id,
+          ref: ref,
+          present: next
+        })
       })
-      .catch(function () {
-        btn.disabled = false; btn.textContent = "Delete";
-        setSyncStatus("Network error.", "err");
-      });
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res && res.ok) {
+            for (var i = 0; i < allTickets.length; i++) {
+              if (allTickets[i].id === id || (ref && allTickets[i].ref === ref)) {
+                allTickets[i].present = next;
+              }
+            }
+            renderTickets();
+            updateStats();
+            setSyncStatus(next ? (id + " marked as in.") : (id + " unmarked."), "ok");
+          } else {
+            checkBtn.disabled = false;
+            checkBtn.textContent = currentlyIn ? "Undo" : "Mark in";
+            setSyncStatus("Couldn\u2019t update. Try again.", "err");
+          }
+        })
+        .catch(function () {
+          checkBtn.disabled = false;
+          checkBtn.textContent = currentlyIn ? "Undo" : "Mark in";
+          setSyncStatus("Network error.", "err");
+        });
+      return;
+    }
   });
 
-  // ── Search ───────────────────────────────────────────────────────────
-  document.getElementById("searchInput").addEventListener("input", function () {
-    renderTickets(allTickets);
-  });
+  // ── Search + filters ─────────────────────────────────────────────────
+  document.getElementById("searchInput").addEventListener("input", renderTickets);
   document.getElementById("searchInput").addEventListener("keydown", function (e) {
-    if (e.key === "Escape") { this.value = ""; renderTickets(allTickets); }
+    if (e.key === "Escape") { this.value = ""; renderTickets(); }
+  });
+  document.querySelectorAll(".filter-btn").forEach(function (b) {
+    b.addEventListener("click", function () {
+      presenceFilter = b.getAttribute("data-filter") || "all";
+      document.querySelectorAll(".filter-btn").forEach(function (x) {
+        x.classList.toggle("is-active", x === b);
+      });
+      renderTickets();
+    });
   });
 
-  // ── Refresh ──────────────────────────────────────────────────────────
   document.getElementById("refreshBtn").addEventListener("click", fetchTickets);
-
-  // ── Settings event listeners ─────────────────────────────────────────
   document.querySelectorAll(".mode-btn").forEach(function (b) {
     b.addEventListener("click", function () { setMode(b.getAttribute("data-mode")); });
   });
   document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
 
-  // ── Export CSV ───────────────────────────────────────────────────────
   document.getElementById("exportBtn").addEventListener("click", function () {
     var list = allTickets;
-    var header = "Name,Email,Ticket ID,Reference,Amount,Currency,Test,Issued\n";
+    var header = "Name,Email,Ticket ID,Reference,Amount,Currency,Present,Test,Issued\n";
     var body = list.map(function (r) {
-      return [r.name, r.email, r.id, r.ref, r.amount, r.currency, r.demo ? "yes" : "no", r.ts].map(function (v) {
+      return [r.name, r.email, r.id, r.ref, r.amount, r.currency, r.present ? "yes" : "no", r.demo ? "yes" : "no", r.ts].map(function (v) {
         v = String(v == null ? "" : v); return /[\",\n]/.test(v) ? '"' + v.replace(/\"/g, '""') + '"' : v;
       }).join(",");
     }).join("\n");
