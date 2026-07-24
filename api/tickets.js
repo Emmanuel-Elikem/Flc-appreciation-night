@@ -1,57 +1,81 @@
-// Synced ticket store backed by Vercel Edge Config.
+// Synced guest list — no longer writes tickets into Edge Config (Hobby 8KB cap).
 //
-// GET  /api/tickets?passcode=...          → list all tickets (passcode required)
-// POST /api/tickets                       → save / upsert a ticket (no auth — caller must
-//                                           send a real ticket object; demo flag is preserved)
-// DELETE /api/tickets?id=...&passcode=... → delete one ticket by ticket id (passcode required)
+// Sources (merged):
+//   1. data/tickets-seed.json  — the 37 tickets already sold before the size limit
+//   2. Paystack successful transactions — every new payment (live/test by mode)
+//   3. Edge Config key "deleted" — refs/ids soft-deleted from admin
+//
+// GET    /api/tickets?passcode=...          → list (passcode required)
+// POST   /api/tickets                       → accepted (idempotent; Paystack is source of truth)
+// DELETE /api/tickets?id=...&passcode=...   → soft-delete (passcode required)
 
 var S = require("./_settings");
+var fs = require("fs");
+var path = require("path");
 
-var EC_ID   = process.env.EDGE_CONFIG_ID;
+var ADMIN = process.env.ADMIN_PASSCODE;
+var EC_ID = process.env.EDGE_CONFIG_ID;
 var EC_RTOK = process.env.EDGE_CONFIG_READ_TOKEN;
-var V_TOK   = process.env.VERCEL_API_TOKEN;
-var V_TEAM  = process.env.VERCEL_TEAM_ID;
-var ADMIN   = process.env.ADMIN_PASSCODE;
+var V_TOK = process.env.VERCEL_API_TOKEN;
+var V_TEAM = process.env.VERCEL_TEAM_ID;
 
-// Edge Config key for a ticket id like "AN26-ABCDE" → "tk_AN26_ABCDE"
-function ecKey(id) {
-  return "tk_" + String(id).replace(/[^a-zA-Z0-9]/g, "_");
+function readBody(req) {
+  return new Promise(function (resolve) {
+    if (req.body) {
+      if (typeof req.body === "string") {
+        try { return resolve(JSON.parse(req.body)); } catch (e) { return resolve({}); }
+      }
+      return resolve(req.body);
+    }
+    var data = "";
+    req.on("data", function (c) { data += c; });
+    req.on("end", function () {
+      try { resolve(data ? JSON.parse(data) : {}); } catch (e) { resolve({}); }
+    });
+    req.on("error", function () { resolve({}); });
+  });
 }
 
-async function listTickets() {
+function loadSeed() {
+  try {
+    var p = path.join(process.cwd(), "data", "tickets-seed.json");
+    if (fs.existsSync(p)) return JSON.parse(fs.readFileSync(p, "utf8")) || [];
+  } catch (e) {}
+  return [];
+}
+
+async function readDeleted() {
   if (!EC_ID || !EC_RTOK) return [];
   try {
     var r = await fetch(
-      "https://edge-config.vercel.com/" + EC_ID + "/items?token=" + EC_RTOK,
+      "https://edge-config.vercel.com/" + EC_ID + "/item/deleted?token=" + EC_RTOK,
       { cache: "no-store" }
     );
     if (!r.ok) return [];
-    var data = await r.json();
-    // Response is an object: { settings: {...}, tk_AN26_ABCDE: {...}, ... }
-    var tickets = [];
-    for (var key in data) {
-      if (key.startsWith("tk_")) tickets.push(data[key]);
-    }
-    // Sort newest first by ts
-    tickets.sort(function (a, b) {
-      return (b.ts || "") < (a.ts || "") ? -1 : 1;
-    });
-    return tickets;
+    var v = await r.json();
+    return Array.isArray(v) ? v : [];
   } catch (e) {
     return [];
   }
 }
 
-async function upsertTicket(ticket) {
+async function writeDeleted(list) {
   if (!EC_ID || !V_TOK) return { ok: false, reason: "store_unconfigured" };
-  var key = ecKey(ticket.id);
-  var url = "https://api.vercel.com/v1/edge-config/" + EC_ID + "/items" +
+  var url =
+    "https://api.vercel.com/v1/edge-config/" +
+    EC_ID +
+    "/items" +
     (V_TEAM ? "?teamId=" + V_TEAM : "");
   try {
     var r = await fetch(url, {
       method: "PATCH",
-      headers: { Authorization: "Bearer " + V_TOK, "Content-Type": "application/json" },
-      body: JSON.stringify({ items: [{ operation: "upsert", key: key, value: ticket }] })
+      headers: {
+        Authorization: "Bearer " + V_TOK,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        items: [{ operation: "upsert", key: "deleted", value: list }]
+      })
     });
     return r.ok ? { ok: true } : { ok: false, reason: "write_failed", status: r.status };
   } catch (e) {
@@ -59,87 +83,147 @@ async function upsertTicket(ticket) {
   }
 }
 
-async function deleteTicket(id) {
-  if (!EC_ID || !V_TOK) return { ok: false, reason: "store_unconfigured" };
-  var key = ecKey(id);
-  var url = "https://api.vercel.com/v1/edge-config/" + EC_ID + "/items" +
-    (V_TEAM ? "?teamId=" + V_TEAM : "");
-  try {
-    var r = await fetch(url, {
-      method: "PATCH",
-      headers: { Authorization: "Bearer " + V_TOK, "Content-Type": "application/json" },
-      body: JSON.stringify({ items: [{ operation: "delete", key: key }] })
-    });
-    return r.ok ? { ok: true } : { ok: false, reason: "write_failed" };
-  } catch (e) {
-    return { ok: false, reason: "error" };
+function field(meta, name) {
+  var cf = (meta && meta.custom_fields) || [];
+  for (var i = 0; i < cf.length; i++) {
+    if (cf[i] && cf[i].variable_name === name && cf[i].value != null) return String(cf[i].value);
   }
+  return "";
 }
 
-function readBody(req) {
-  return new Promise(function (resolve) {
-    if (req.body) {
-      if (typeof req.body === "string") { try { return resolve(JSON.parse(req.body)); } catch (e) { return resolve({}); } }
-      return resolve(req.body);
+function idFromRef(ref) {
+  var s = String(ref || "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  if (s.length >= 5) return "AN26-" + s.slice(-5);
+  return "AN26-" + (s + "XXXXX").slice(0, 5);
+}
+
+async function fetchPaystackTickets(mode) {
+  var secret = S.secretKey(mode);
+  if (!secret) return [];
+  var out = [];
+  var page = 1;
+  try {
+    while (page <= 5) {
+      var r = await fetch(
+        "https://api.paystack.co/transaction?status=success&perPage=100&page=" + page,
+        { headers: { Authorization: "Bearer " + secret }, cache: "no-store" }
+      );
+      var j = await r.json();
+      if (!j || !j.status || !Array.isArray(j.data)) break;
+      for (var i = 0; i < j.data.length; i++) {
+        var d = j.data[i];
+        if (!d || d.status !== "success") continue;
+        var meta = d.metadata || {};
+        var name = field(meta, "full_name") || (d.customer && (d.customer.first_name || "")) || "Guest";
+        var ticketId = field(meta, "ticket_id") || idFromRef(d.reference);
+        var ticketPrice = Number(field(meta, "ticket_price"));
+        var amount =
+          isFinite(ticketPrice) && ticketPrice > 0
+            ? ticketPrice
+            : typeof d.amount === "number"
+              ? d.amount / 100
+              : 0;
+        out.push({
+          id: ticketId,
+          no: 0,
+          name: name,
+          email: (d.customer && d.customer.email) || "",
+          ref: d.reference,
+          amount: amount,
+          currency: d.currency || "GHS",
+          demo: false,
+          ts: d.paid_at || d.paidAt || d.created_at || new Date().toISOString(),
+          source: "paystack"
+        });
+      }
+      if (j.data.length < 100) break;
+      page++;
     }
-    var data = "";
-    req.on("data", function (c) { data += c; });
-    req.on("end", function () { try { resolve(data ? JSON.parse(data) : {}); } catch (e) { resolve({}); } });
-    req.on("error", function () { resolve({}); });
-  });
+  } catch (e) {}
+  return out;
 }
 
-function validateTicket(t) {
-  // Must have at minimum an id, name, and ts
-  return t && typeof t.id === "string" && t.id.startsWith("AN26-") &&
-    typeof t.name === "string" && t.name.length >= 1;
+function mergeTickets(seed, paystack, deleted) {
+  var del = {};
+  for (var i = 0; i < deleted.length; i++) del[String(deleted[i])] = true;
+  var byKey = {};
+
+  function add(t) {
+    if (!t) return;
+    var ref = t.ref || "";
+    var id = t.id || "";
+    if (del[ref] || del[id]) return;
+    var key = ref || id;
+    if (!key) return;
+    var prev = byKey[key];
+    if (!prev) {
+      byKey[key] = t;
+      return;
+    }
+    // Prefer seed/local AN26 ids and richer names over derived ones
+    if ((prev.source === "paystack") && t.source !== "paystack") byKey[key] = Object.assign({}, prev, t, { ref: prev.ref || t.ref });
+    else if (!prev.name || prev.name === "Guest") byKey[key] = Object.assign({}, prev, { name: t.name || prev.name, email: t.email || prev.email });
+  }
+
+  for (var s = 0; s < seed.length; s++) add(Object.assign({}, seed[s], { source: "seed" }));
+  for (var p = 0; p < paystack.length; p++) add(paystack[p]);
+
+  var list = Object.keys(byKey).map(function (k) { return byKey[k]; });
+  list.sort(function (a, b) {
+    return (b.ts || "") < (a.ts || "") ? -1 : 1;
+  });
+  for (var n = 0; n < list.length; n++) list[n].no = list.length - n;
+  return list;
 }
 
 module.exports = async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store, max-age=0");
   var url = new URL(req.url, "http://localhost");
 
-  // ── GET: list all tickets (passcode required) ──────────────────────
   if (req.method === "GET") {
     var passcode = url.searchParams.get("passcode") || "";
     if (!ADMIN || passcode !== ADMIN) {
       return res.status(401).json({ ok: false, reason: "unauthorized" });
     }
-    var tickets = await listTickets();
-    return res.status(200).json({ ok: true, tickets: tickets, count: tickets.length });
+    var settings = await S.readSettings();
+    var seed = loadSeed();
+    var paystack = await fetchPaystackTickets(settings.mode);
+    var deleted = await readDeleted();
+    var tickets = mergeTickets(seed, paystack, deleted);
+    return res.status(200).json({
+      ok: true,
+      tickets: tickets,
+      count: tickets.length,
+      sources: { seed: seed.length, paystack: paystack.length, deleted: deleted.length }
+    });
   }
 
-  // ── POST: save / upsert a ticket ───────────────────────────────────
   if (req.method === "POST") {
+    // Accepted for backward compatibility with the ticket page.
+    // New payments are listed from Paystack; no Edge Config write (size limit).
     var body = await readBody(req);
-    if (!validateTicket(body)) {
+    if (!body || !body.id) {
       return res.status(400).json({ ok: false, reason: "invalid_ticket" });
     }
-    // Sanitise: only store known fields
-    var ticket = {
-      id:       String(body.id),
-      no:       Number(body.no) || 0,
-      name:     String(body.name).slice(0, 120),
-      email:    String(body.email || "").slice(0, 200),
-      ref:      String(body.ref || ""),
-      amount:   Number(body.amount) || 0,
-      currency: String(body.currency || "GHS"),
-      demo:     !!body.demo,
-      ts:       String(body.ts || new Date().toISOString())
-    };
-    var result = await upsertTicket(ticket);
-    return res.status(result.ok ? 200 : 500).json(result);
+    return res.status(200).json({ ok: true, stored: "paystack" });
   }
 
-  // ── DELETE: remove a ticket by id (passcode required) ─────────────
   if (req.method === "DELETE") {
-    var passcode = url.searchParams.get("passcode") || "";
+    var pass = url.searchParams.get("passcode") || "";
     var id = url.searchParams.get("id") || "";
-    if (!ADMIN || passcode !== ADMIN) {
+    if (!ADMIN || pass !== ADMIN) {
       return res.status(401).json({ ok: false, reason: "unauthorized" });
     }
     if (!id) return res.status(400).json({ ok: false, reason: "missing_id" });
-    var result = await deleteTicket(id);
+
+    // Soft-delete by id (and matching ref if provided)
+    var deleted = await readDeleted();
+    if (deleted.indexOf(id) === -1) deleted.push(id);
+    var ref = url.searchParams.get("ref") || "";
+    if (ref && deleted.indexOf(ref) === -1) deleted.push(ref);
+    // Keep list small
+    if (deleted.length > 400) deleted = deleted.slice(-400);
+    var result = await writeDeleted(deleted);
     return res.status(result.ok ? 200 : 500).json(result);
   }
 

@@ -173,15 +173,16 @@
   function savePurchase(rec) {
     try { var list = JSON.parse(localStorage.getItem(STORE_KEY) || "[]"); list.push(rec); localStorage.setItem(STORE_KEY, JSON.stringify(list)); } catch (e) {}
   }
-  function issueTicket(name, email, ref, demo) {
+  function issueTicket(name, email, ref, demo, ticketId) {
     setLoading(false);
-    var id = genId(), count = 1;
+    var id = ticketId || genId(), count = 1;
     try { count = (JSON.parse(localStorage.getItem(STORE_KEY) || "[]").length || 0) + 1; } catch (e) {}
     savePurchase({ id: id, no: count, name: name, email: email, ref: ref, amount: C.priceGHS, currency: C.currency, demo: !!demo, ts: new Date().toISOString() });
     window.location.href = "ticket.html?reference=" + encodeURIComponent(ref);
   }
   function startPayment(name, email) {
     setLoading(true);
+    var ticketId = genId();
     if (C.paystackPublicKey && window.PaystackPop) {
       try {
         var handler = window.PaystackPop.setup({
@@ -190,10 +191,11 @@
           metadata: {
             custom_fields: [
               { display_name: "Full name", variable_name: "full_name", value: name },
-              { display_name: "Ticket price", variable_name: "ticket_price", value: String(C.priceGHS) }
+              { display_name: "Ticket price", variable_name: "ticket_price", value: String(C.priceGHS) },
+              { display_name: "Ticket ID", variable_name: "ticket_id", value: ticketId }
             ]
           },
-          callback: function (res) { issueTicket(name, email, res.reference, false); },
+          callback: function (res) { issueTicket(name, email, res.reference, false, ticketId); },
           onClose: function () { setLoading(false); }
         });
         handler.openIframe();
@@ -202,7 +204,7 @@
         if (formError) { formError.textContent = "Something went wrong. Please try again."; formError.classList.add("show"); }
       }
     } else {
-      setTimeout(function () { issueTicket(name, email, "PASS-" + Date.now(), true); }, 700);
+      setTimeout(function () { issueTicket(name, email, "PASS-" + Date.now(), true, ticketId); }, 700);
     }
   }
   if (form) {

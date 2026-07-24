@@ -58,7 +58,7 @@
         "<td class=\"col-ref\"><code>" + esc(r.ref) + "</code></td>" +
         "<td>" + esc(fmtDate(r.ts)) + "</td>" +
         "<td>" + (r.demo ? '<span class="tag">Test</span>' : "") + "</td>" +
-        "<td><button type=\"button\" class=\"row-del\" data-id=\"" + esc(r.id) + "\" aria-label=\"Delete ticket\">Delete</button></td>" +
+        "<td><button type=\"button\" class=\"row-del\" data-id=\"" + esc(r.id) + "\" data-ref=\"" + esc(r.ref || "") + "\" aria-label=\"Delete ticket\">Delete</button></td>" +
         "</tr>";
     }).join("");
 
@@ -183,7 +183,7 @@
     var id = btn.getAttribute("data-id");
     if (!window.confirm("Delete " + id + " from the guest list? This can\u2019t be undone.")) return;
     btn.disabled = true; btn.textContent = "\u2026";
-    fetch("/api/tickets?id=" + encodeURIComponent(id) + "&passcode=" + encodeURIComponent(currentPass()), { method: "DELETE" })
+    fetch("/api/tickets?id=" + encodeURIComponent(id) + "&passcode=" + encodeURIComponent(currentPass()) + (btn.getAttribute("data-ref") ? "&ref=" + encodeURIComponent(btn.getAttribute("data-ref")) : ""), { method: "DELETE" })
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (res && res.ok) {
